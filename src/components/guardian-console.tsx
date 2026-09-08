@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { signOut } from "next-auth/react";
 
 type Telemetry = {
   id: string;
@@ -118,6 +119,13 @@ export function GuardianConsole() {
             }`}
           >
             All
+          </button>
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="rounded border border-black/20 px-3 py-1 text-sm dark:border-white/20"
+          >
+            Log out
           </button>
         </div>
       </div>
