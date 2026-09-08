@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { EdgeLight } from "@/components/edge-light";
 
 type Telemetry = {
   id: string;
@@ -117,8 +118,15 @@ export function GuardianConsole() {
   const active = alerts.filter((a) => a.status === "ACTIVE");
   const inactive = alerts.filter((a) => a.status !== "ACTIVE");
 
+  const edgeLightColor = active.length === 0
+    ? null
+    : active.some((a) => a.riskLevel === "CRITICAL")
+      ? "var(--emergency)"
+      : "var(--caution)";
+
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-20 pt-8 md:pt-12">
+      <EdgeLight color={edgeLightColor} />
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-safe">
@@ -266,12 +274,12 @@ function IncidentCard({
   return (
     <div
       className={cn(
-        "flex flex-col gap-5 rounded-2xl border bg-card p-5 shadow-sm",
+        "flex flex-col gap-5 rounded-2xl border bg-card p-5 shadow-sm motion-safe:animate-card-in",
         isActive
-          ? "border-border border-l-4 border-l-emergency motion-safe:animate-card-in-glow"
+          ? "border-border border-l-4 border-l-emergency"
           : alert.status === "RESOLVED"
-            ? "border-resolved motion-safe:animate-card-in"
-            : "border-border motion-safe:animate-card-in"
+            ? "border-resolved"
+            : "border-border"
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">

@@ -176,30 +176,18 @@ body {
   animation: heartbeat-soft 1.1s ease-in-out infinite;
 }
 
-@keyframes pulse-glow {
+@keyframes edge-light-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--emergency) 45%, transparent);
+    opacity: 0.4;
   }
   50% {
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--emergency) 0%, transparent);
+    opacity: 1;
   }
 }
 
-@utility animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-/*
- * Combined variant for elements that need both the one-shot entrance
- * animation and the looping glow at once — `animation` is a shorthand,
- * so applying two separate animate-* utilities to the same element
- * would have the later one silently override the earlier one entirely.
- */
-@utility animate-card-in-glow {
-  animation:
-    card-in 0.35s ease-out,
-    pulse-glow 2s ease-in-out infinite;
+@utility animate-edge-light {
+  animation: edge-light-pulse 2.5s ease-in-out infinite;
 }
 
 @keyframes fade-in {

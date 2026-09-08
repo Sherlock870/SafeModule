@@ -14,6 +14,7 @@ import {
   Mic,
 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
+import { EdgeLight } from "@/components/edge-light";
 import { cn } from "@/lib/cn";
 
 type DeviceType = "BAG_CLIP" | "NECKLACE";
@@ -184,6 +185,7 @@ export default function SimulatorPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-background">
+      <EdgeLight color={trackedAlertStatus === "ACTIVE" ? "var(--safe)" : null} />
       <SiteHeader animated />
 
       <main className="mx-auto w-full max-w-3xl px-4 pb-20 pt-8 md:pt-12">
