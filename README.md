@@ -20,7 +20,7 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). Use `/signup` to create an
-account and `/login` to sign in; `/dashboard` is a protected page that
+account and `/login` to sign in; `/guardian` is a protected page that
 redirects to `/login` when there's no session.
 
 ## Database

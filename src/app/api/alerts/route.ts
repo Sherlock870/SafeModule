@@ -30,6 +30,20 @@ export async function POST(request: Request) {
     );
   }
 
+  if (latitude !== null && (latitude < -90 || latitude > 90)) {
+    return NextResponse.json(
+      { error: "latitude must be between -90 and 90." },
+      { status: 400 }
+    );
+  }
+
+  if (longitude !== null && (longitude < -180 || longitude > 180)) {
+    return NextResponse.json(
+      { error: "longitude must be between -180 and 180." },
+      { status: 400 }
+    );
+  }
+
   await prisma.device.upsert({
     where: { id: deviceId },
     update: {},
