@@ -24,6 +24,7 @@ const DEVICE_ID_KEY_PREFIX = "safemodule_device_id_";
 const STREAM_INTERVAL_MS = 2000;
 const SPIKE_TICKS = 5;
 const ALERT_POLL_INTERVAL_MS = 3000;
+const CANCEL_WINDOW_SECONDS = 4;
 
 function statusMessageFor(status: AlertStatus): string {
   switch (status) {
@@ -56,6 +57,11 @@ export default function SimulatorPage() {
 
   const [trackedAlertStatus, setTrackedAlertStatus] = useState<AlertStatus | null>(null);
   const alertPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [pendingTrigger, setPendingTrigger] = useState<
+    "MANUAL_SOS" | "VOICE_DISTRESS" | null
+  >(null);
+  const [pendingCountdown, setPendingCountdown] = useState(CANCEL_WINDOW_SECONDS);
 
   useEffect(() => {
     const ids = (["BAG_CLIP", "NECKLACE"] as const).reduce((acc, type) => {
@@ -90,6 +96,16 @@ export default function SimulatorPage() {
       if (alertPollRef.current) clearInterval(alertPollRef.current);
     };
   }, []);
+
+  function beginCancelWindow(triggerType: "MANUAL_SOS" | "VOICE_DISTRESS") {
+    if (!deviceIds || sending || pendingTrigger) return;
+    setPendingCountdown(CANCEL_WINDOW_SECONDS);
+    setPendingTrigger(triggerType);
+  }
+
+  function cancelPendingTrigger() {
+    setPendingTrigger(null);
+  }
 
   function trackAlert(alertId: string, initialStatus: AlertStatus) {
     if (alertPollRef.current) clearInterval(alertPollRef.current);
@@ -148,6 +164,29 @@ export default function SimulatorPage() {
       setSending(false);
     }
   }
+
+  // Ticks the pending trigger down to zero, then fires the real alert exactly as
+  // sendAlert always has. Cancelling or unmounting before it reaches zero clears
+  // the interval, so sendAlert is never called and no request goes out.
+  useEffect(() => {
+    if (!pendingTrigger) return;
+    const trigger = pendingTrigger;
+    let remaining = pendingCountdown;
+    const interval = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setPendingTrigger(null);
+        sendAlert(trigger);
+        return;
+      }
+      setPendingCountdown(remaining);
+    }, 1000);
+    return () => clearInterval(interval);
+    // Only re-arm when a new trigger starts — pendingCountdown itself is driven
+    // by this effect via the interval closure above, not the other way around.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingTrigger]);
 
   function startStreaming() {
     if (!deviceIds || streaming) return;
@@ -216,12 +255,14 @@ export default function SimulatorPage() {
           <div className="flex gap-2">
             <ModeTab
               active={mode === "BAG_CLIP"}
+              disabled={!!pendingTrigger}
               onClick={() => setMode("BAG_CLIP")}
               icon={<Briefcase className="size-4" />}
               label="Bag / Clip"
             />
             <ModeTab
               active={mode === "NECKLACE"}
+              disabled={!!pendingTrigger}
               onClick={() => setMode("NECKLACE")}
               icon={<HeartPulse className="size-4" />}
               label="Necklace"
@@ -231,16 +272,22 @@ export default function SimulatorPage() {
           <DeviceCard>
             {mode === "BAG_CLIP" ? (
               <SosControl
-                disabled={!deviceIds || sending}
-                onTrigger={() => sendAlert("MANUAL_SOS")}
+                disabled={!deviceIds || sending || pendingTrigger === "VOICE_DISTRESS"}
+                pending={pendingTrigger === "MANUAL_SOS"}
+                countdown={pendingCountdown}
+                onTrigger={() => beginCancelWindow("MANUAL_SOS")}
+                onCancel={cancelPendingTrigger}
               />
             ) : (
               <NecklaceControl
-                triggerDisabled={!deviceIds || sending}
+                triggerDisabled={!deviceIds || sending || pendingTrigger === "MANUAL_SOS"}
                 toggleDisabled={!deviceIds}
                 streaming={streaming}
                 readings={readings}
-                onTrigger={() => sendAlert("VOICE_DISTRESS")}
+                pending={pendingTrigger === "VOICE_DISTRESS"}
+                countdown={pendingCountdown}
+                onTrigger={() => beginCancelWindow("VOICE_DISTRESS")}
+                onCancel={cancelPendingTrigger}
                 onToggleStream={streaming ? stopStreaming : startStreaming}
                 onSpike={spikeHeartRate}
               />
@@ -285,11 +332,13 @@ function ConsentLine() {
 
 function ModeTab({
   active,
+  disabled,
   onClick,
   icon,
   label,
 }: {
   active: boolean;
+  disabled?: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
@@ -298,11 +347,12 @@ function ModeTab({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cn(
-        "inline-flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-[color,background-color,border-color,transform] active:scale-95",
+        "inline-flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-[color,background-color,border-color,transform] disabled:opacity-40 active:enabled:scale-95",
         active
           ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-card text-foreground hover:bg-accent"
+          : "border-border bg-card text-foreground hover:enabled:bg-accent"
       )}
     >
       {icon}
@@ -321,32 +371,62 @@ function DeviceCard({ children }: { children: React.ReactNode }) {
 
 function SosControl({
   disabled,
+  pending,
+  countdown,
   onTrigger,
+  onCancel,
 }: {
   disabled: boolean;
+  pending: boolean;
+  countdown: number;
   onTrigger: () => void;
+  onCancel: () => void;
 }) {
   return (
     <div className="flex flex-1 flex-col items-center gap-4 text-center">
       <button
         type="button"
         onClick={onTrigger}
-        disabled={disabled}
+        disabled={disabled || pending}
         aria-label="Raise SOS alert"
         className={cn(
           "flex size-40 flex-col items-center justify-center gap-2 rounded-full text-emergency-foreground transition-transform",
-          disabled
-            ? "bg-emergency/50"
-            : "bg-emergency hover:opacity-90 active:scale-95"
+          pending
+            ? "bg-emergency motion-safe:animate-pulse"
+            : disabled
+              ? "bg-emergency/50"
+              : "bg-emergency hover:opacity-90 active:scale-95"
         )}
       >
-        <AlertTriangle className="size-9" aria-hidden="true" />
-        <span className="text-lg font-semibold tracking-wide">SOS</span>
+        {pending ? (
+          <>
+            <span className="font-mono text-4xl font-semibold" role="status">
+              {countdown}
+            </span>
+            <span className="text-sm font-semibold tracking-wide">Sending…</span>
+          </>
+        ) : (
+          <>
+            <AlertTriangle className="size-9" aria-hidden="true" />
+            <span className="text-lg font-semibold tracking-wide">SOS</span>
+          </>
+        )}
       </button>
 
-      <p className="max-w-56 text-sm leading-relaxed text-muted-foreground">
-        One deliberate tap sends the alert — no hold required.
-      </p>
+      {pending ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-foreground transition-transform hover:bg-accent active:scale-95"
+        >
+          Cancel
+        </button>
+      ) : (
+        <p className="max-w-56 text-sm leading-relaxed text-muted-foreground">
+          A tap starts a short countdown before the alert sends — cancel any time
+          before it fires.
+        </p>
+      )}
     </div>
   );
 }
@@ -356,7 +436,10 @@ function NecklaceControl({
   toggleDisabled,
   streaming,
   readings,
+  pending,
+  countdown,
   onTrigger,
+  onCancel,
   onToggleStream,
   onSpike,
 }: {
@@ -364,7 +447,10 @@ function NecklaceControl({
   toggleDisabled: boolean;
   streaming: boolean;
   readings: number[];
+  pending: boolean;
+  countdown: number;
   onTrigger: () => void;
+  onCancel: () => void;
   onToggleStream: () => void;
   onSpike: () => void;
 }) {
@@ -372,19 +458,38 @@ function NecklaceControl({
     <div className="flex flex-1 flex-col items-center gap-5 text-center">
       <HeartRateReadout streaming={streaming} readings={readings} />
 
-      <button
-        type="button"
-        onClick={onTrigger}
-        disabled={triggerDisabled}
-        aria-label="Trigger voice distress alert"
-        className={cn(
-          "inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-emergency-foreground transition-opacity",
-          triggerDisabled ? "bg-emergency/50" : "bg-emergency hover:opacity-90 active:scale-95"
-        )}
-      >
-        <Mic className="size-4" aria-hidden="true" />
-        Voice distress
-      </button>
+      {pending ? (
+        <div className="flex items-center gap-2">
+          <span
+            role="status"
+            className="inline-flex items-center gap-2 rounded-full bg-emergency px-6 py-3 text-sm font-semibold text-emergency-foreground motion-safe:animate-pulse"
+          >
+            <Mic className="size-4" aria-hidden="true" />
+            Sending in {countdown}s
+          </span>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-transform hover:bg-accent active:scale-95"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onTrigger}
+          disabled={triggerDisabled}
+          aria-label="Trigger voice distress alert"
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-emergency-foreground transition-opacity",
+            triggerDisabled ? "bg-emergency/50" : "bg-emergency hover:opacity-90 active:scale-95"
+          )}
+        >
+          <Mic className="size-4" aria-hidden="true" />
+          Voice distress
+        </button>
+      )}
 
       <div className="flex w-full flex-col gap-2 rounded-xl border border-border bg-background px-4 py-3 text-left">
         <div className="flex items-center justify-between">
