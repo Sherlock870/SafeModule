@@ -1,5 +1,6 @@
 import type { Alert, Device } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getAiSourceLabel } from "@/lib/ai-source-label";
 
 export async function attachRecentTelemetry<T extends Alert & { device: Device }>(
   alerts: T[]
@@ -23,5 +24,6 @@ export async function attachRecentTelemetry<T extends Alert & { device: Device }
   return alerts.map((alert) => ({
     ...alert,
     recentTelemetry: byDevice.get(alert.deviceId) ?? [],
+    sourceLabel: getAiSourceLabel(alert.aiSource),
   }));
 }

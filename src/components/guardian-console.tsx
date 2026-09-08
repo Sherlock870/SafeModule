@@ -23,6 +23,8 @@ type AlertRecord = {
   triggeringSignals: string[] | null;
   rationale: string | null;
   recommendedAction: string | null;
+  aiSource: "llm" | "fallback" | null;
+  sourceLabel: string | null;
   recentTelemetry: Telemetry[];
 };
 
@@ -192,6 +194,11 @@ export function GuardianConsole() {
                 {alert.riskConfidence != null && (
                   <p className="text-xs text-black/60 dark:text-white/60">
                     Confidence: {Math.round(alert.riskConfidence * 100)}%
+                  </p>
+                )}
+                {alert.sourceLabel && (
+                  <p className="text-xs text-black/60 dark:text-white/60">
+                    Source: {alert.sourceLabel}
                   </p>
                 )}
               </div>

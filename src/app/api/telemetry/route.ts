@@ -15,9 +15,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (typeof heartRate !== "number" || heartRate < 30 || heartRate > 220) {
+  if (!Number.isInteger(heartRate) || heartRate < 30 || heartRate > 220) {
     return NextResponse.json(
-      { error: "heartRate must be a number between 30 and 220." },
+      { error: "heartRate must be an integer between 30 and 220." },
       { status: 400 }
     );
   }

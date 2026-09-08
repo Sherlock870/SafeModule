@@ -3,10 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 
 type DeviceType = "BAG_CLIP" | "NECKLACE";
+type AlertStatus = "ACTIVE" | "RESOLVED" | "CANCELLED";
 
 const DEVICE_ID_KEY_PREFIX = "safemodule_device_id_";
 const STREAM_INTERVAL_MS = 2000;
 const SPIKE_TICKS = 5;
+const ALERT_POLL_INTERVAL_MS = 3000;
+
+function statusMessageFor(status: AlertStatus): string {
+  switch (status) {
+    case "ACTIVE":
+      return "Guardian reviewing…";
+    case "RESOLVED":
+      return "Help acknowledged.";
+    case "CANCELLED":
+      return "Alert cancelled.";
+  }
+}
 
 function randomInRange(min: number, max: number) {
   return Math.floor(min + Math.random() * (max - min));
@@ -25,6 +38,9 @@ export default function SimulatorPage() {
   const [readings, setReadings] = useState<number[]>([]);
   const spikeTicksRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [trackedAlertStatus, setTrackedAlertStatus] = useState<AlertStatus | null>(null);
+  const alertPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const ids = (["BAG_CLIP", "NECKLACE"] as const).reduce((acc, type) => {
@@ -56,8 +72,32 @@ export default function SimulatorPage() {
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (alertPollRef.current) clearInterval(alertPollRef.current);
     };
   }, []);
+
+  function trackAlert(alertId: string, initialStatus: AlertStatus) {
+    if (alertPollRef.current) clearInterval(alertPollRef.current);
+    setTrackedAlertStatus(initialStatus);
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/alerts/${alertId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        const status: AlertStatus = data.alert.status;
+        setTrackedAlertStatus(status);
+        if (status !== "ACTIVE" && alertPollRef.current) {
+          clearInterval(alertPollRef.current);
+          alertPollRef.current = null;
+        }
+      } catch {
+        // keep polling on transient network errors
+      }
+    };
+
+    alertPollRef.current = setInterval(poll, ALERT_POLL_INTERVAL_MS);
+  }
 
   async function sendAlert(triggerType: "MANUAL_SOS" | "VOICE_DISTRESS") {
     if (!deviceIds || sending) return;
@@ -86,6 +126,7 @@ export default function SimulatorPage() {
       }
 
       setMessage(`Alert sent — incident #${data.alert.id.slice(0, 8)} created.`);
+      trackAlert(data.alert.id, data.alert.status);
     } catch {
       setMessage("Failed to reach the server.");
     } finally {
@@ -134,6 +175,10 @@ export default function SimulatorPage() {
           <h1 className="text-xl font-semibold">Device Simulator</h1>
           <p className="text-sm text-black/60 dark:text-white/60">
             Stand-in for the physical SafeModule wearable.
+          </p>
+          <p className="mt-2 text-xs text-black/60 dark:text-white/60">
+            Wearing this device is your one-time consent — every trigger is a
+            deliberate act, never passive monitoring.
           </p>
         </div>
 
@@ -218,6 +263,11 @@ export default function SimulatorPage() {
         )}
 
         {message && <p className="text-sm">{message}</p>}
+        {trackedAlertStatus && (
+          <p className="text-sm font-medium">
+            {statusMessageFor(trackedAlertStatus)}
+          </p>
+        )}
       </div>
     </div>
   );

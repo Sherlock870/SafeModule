@@ -14,12 +14,6 @@ model User {
   createdAt DateTime @default(now())
 }
 
-model Item {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-}
-
 enum DeviceType {
   BAG_CLIP
   NECKLACE
