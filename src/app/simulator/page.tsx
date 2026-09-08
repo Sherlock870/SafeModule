@@ -1,6 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Briefcase,
+  CheckCircle2,
+  HeartPulse,
+  Info,
+  MapPin,
+  Mic,
+} from "lucide-react";
+import { SiteHeader } from "@/components/site-header";
+import { cn } from "@/lib/cn";
 
 type DeviceType = "BAG_CLIP" | "NECKLACE";
 type AlertStatus = "ACTIVE" | "RESOLVED" | "CANCELLED";
@@ -169,106 +183,344 @@ export default function SimulatorPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-6 rounded-lg border border-black/10 p-6 dark:border-white/10">
-        <div>
-          <h1 className="text-xl font-semibold">Device Simulator</h1>
-          <p className="text-sm text-black/60 dark:text-white/60">
-            Stand-in for the physical SafeModule wearable.
+    <div className="flex flex-1 flex-col bg-background">
+      <SiteHeader />
+
+      <main className="mx-auto w-full max-w-3xl px-4 pb-20 pt-8 md:pt-12">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-opacity hover:opacity-80"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Back to overview
+        </Link>
+
+        <div className="mt-6">
+          <p className="text-xs font-medium uppercase tracking-wide text-emergency">
+            Step 1 · Device Simulator
           </p>
-          <p className="mt-2 text-xs text-black/60 dark:text-white/60">
-            Wearing this device is your one-time consent — every trigger is a
-            deliberate act, never passive monitoring.
+          <h1 className="mt-2 text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+            Act as the wearable device
+          </h1>
+          <p className="mt-3 max-w-xl text-pretty leading-relaxed text-muted-foreground">
+            Choose a device, then raise an alert. Location and vitals stream
+            to the guardian in real time.
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="mt-8 flex flex-col gap-6">
+          <ConsentLine />
+
+          <div className="flex gap-2">
+            <ModeTab
+              active={mode === "BAG_CLIP"}
+              onClick={() => setMode("BAG_CLIP")}
+              icon={<Briefcase className="size-4" />}
+              label="Bag / Clip"
+            />
+            <ModeTab
+              active={mode === "NECKLACE"}
+              onClick={() => setMode("NECKLACE")}
+              icon={<HeartPulse className="size-4" />}
+              label="Necklace"
+            />
+          </div>
+
+          <DeviceCard>
+            {mode === "BAG_CLIP" ? (
+              <SosControl
+                disabled={!deviceIds || sending}
+                onTrigger={() => sendAlert("MANUAL_SOS")}
+              />
+            ) : (
+              <NecklaceControl
+                triggerDisabled={!deviceIds || sending}
+                toggleDisabled={!deviceIds}
+                streaming={streaming}
+                readings={readings}
+                onTrigger={() => sendAlert("VOICE_DISTRESS")}
+                onToggleStream={streaming ? stopStreaming : startStreaming}
+                onSpike={spikeHeartRate}
+              />
+            )}
+
+            <DeviceSidebar location={location} status={trackedAlertStatus} />
+          </DeviceCard>
+
+          {message && (
+            <p className="text-sm text-muted-foreground">{message}</p>
+          )}
+        </div>
+
+        <div className="mt-10 flex justify-end border-t border-border pt-6">
+          <Link
+            href="/guardian"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-safe transition-opacity hover:opacity-80"
+          >
+            Continue to Guardian Console
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function ConsentLine() {
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card px-4 py-3">
+      <Info
+        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        Wearing this device is your one-time consent — every trigger is a
+        deliberate act, never passive monitoring.
+      </p>
+    </div>
+  );
+}
+
+function ModeTab({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:bg-accent"
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function DeviceCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-8 rounded-2xl border border-border bg-card p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+      {children}
+    </div>
+  );
+}
+
+function SosControl({
+  disabled,
+  onTrigger,
+}: {
+  disabled: boolean;
+  onTrigger: () => void;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center gap-4 text-center">
+      <button
+        type="button"
+        onClick={onTrigger}
+        disabled={disabled}
+        aria-label="Raise SOS alert"
+        className={cn(
+          "flex size-40 flex-col items-center justify-center gap-2 rounded-full text-emergency-foreground transition-transform",
+          disabled
+            ? "bg-emergency/50"
+            : "bg-emergency hover:opacity-90 active:scale-95"
+        )}
+      >
+        <AlertTriangle className="size-9" aria-hidden="true" />
+        <span className="text-lg font-semibold tracking-wide">SOS</span>
+      </button>
+
+      <p className="max-w-56 text-sm leading-relaxed text-muted-foreground">
+        One deliberate tap sends the alert — no hold required.
+      </p>
+    </div>
+  );
+}
+
+function NecklaceControl({
+  triggerDisabled,
+  toggleDisabled,
+  streaming,
+  readings,
+  onTrigger,
+  onToggleStream,
+  onSpike,
+}: {
+  triggerDisabled: boolean;
+  toggleDisabled: boolean;
+  streaming: boolean;
+  readings: number[];
+  onTrigger: () => void;
+  onToggleStream: () => void;
+  onSpike: () => void;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center gap-5 text-center">
+      <HeartRateReadout streaming={streaming} readings={readings} />
+
+      <button
+        type="button"
+        onClick={onTrigger}
+        disabled={triggerDisabled}
+        aria-label="Trigger voice distress alert"
+        className={cn(
+          "inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-emergency-foreground transition-opacity",
+          triggerDisabled ? "bg-emergency/50" : "bg-emergency hover:opacity-90 active:scale-95"
+        )}
+      >
+        <Mic className="size-4" aria-hidden="true" />
+        Voice distress
+      </button>
+
+      <div className="flex w-full flex-col gap-2 rounded-xl border border-border bg-background px-4 py-3 text-left">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground">
+            Heart-rate telemetry
+          </span>
           <button
             type="button"
-            onClick={() => setMode("BAG_CLIP")}
-            className={`flex-1 rounded border px-3 py-2 text-sm font-medium ${
-              mode === "BAG_CLIP"
-                ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                : "border-black/20 dark:border-white/20"
-            }`}
+            disabled={toggleDisabled}
+            onClick={onToggleStream}
+            className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent"
           >
-            Bag / Clip
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("NECKLACE")}
-            className={`flex-1 rounded border px-3 py-2 text-sm font-medium ${
-              mode === "NECKLACE"
-                ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                : "border-black/20 dark:border-white/20"
-            }`}
-          >
-            Necklace
+            {streaming ? "Stop wearing" : "Start wearing"}
           </button>
         </div>
 
-        {mode === "BAG_CLIP" && (
-          <div className="space-y-4">
-            <button
-              type="button"
-              disabled={!deviceIds || sending}
-              onClick={() => sendAlert("MANUAL_SOS")}
-              className="w-full rounded-lg bg-red-600 py-6 text-lg font-semibold text-white disabled:opacity-50"
-            >
-              SOS
-            </button>
-          </div>
-        )}
+        <button
+          type="button"
+          disabled={!streaming}
+          onClick={onSpike}
+          className="w-full rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground disabled:opacity-40 hover:enabled:bg-accent"
+        >
+          Spike heart rate
+        </button>
 
-        {mode === "NECKLACE" && (
-          <div className="space-y-4">
-            <button
-              type="button"
-              disabled={!deviceIds || sending}
-              onClick={() => sendAlert("VOICE_DISTRESS")}
-              className="w-full rounded-lg bg-red-600 py-4 text-base font-semibold text-white disabled:opacity-50"
-            >
-              Say distress phrase
-            </button>
-
-            <div className="space-y-2 rounded border border-black/10 p-3 dark:border-white/10">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Heart-rate telemetry</span>
-                <button
-                  type="button"
-                  disabled={!deviceIds}
-                  onClick={streaming ? stopStreaming : startStreaming}
-                  className="rounded border border-black/20 px-2 py-1 text-xs font-medium dark:border-white/20"
-                >
-                  {streaming ? "Stop wearing" : "Start wearing"}
-                </button>
-              </div>
-
-              <button
-                type="button"
-                disabled={!streaming}
-                onClick={spikeHeartRate}
-                className="w-full rounded border border-black/20 px-2 py-1 text-xs font-medium disabled:opacity-40 dark:border-white/20"
-              >
-                Spike heart rate
-              </button>
-
-              <p className="text-xs text-black/60 dark:text-white/60">
-                {readings.length
-                  ? `Last readings: ${readings.join(", ")} bpm`
-                  : "No readings yet."}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {message && <p className="text-sm">{message}</p>}
-        {trackedAlertStatus && (
-          <p className="text-sm font-medium">
-            {statusMessageFor(trackedAlertStatus)}
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          {readings.length
+            ? `Last readings: ${readings.join(", ")} bpm`
+            : "No readings yet."}
+        </p>
       </div>
+    </div>
+  );
+}
+
+function HeartRateReadout({
+  streaming,
+  readings,
+}: {
+  streaming: boolean;
+  readings: number[];
+}) {
+  const bpm = readings[0];
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="flex items-center gap-2">
+        <HeartPulse
+          className={cn(
+            "size-6 text-heartbeat",
+            streaming && "motion-safe:animate-heartbeat"
+          )}
+          aria-hidden="true"
+        />
+        <span className="font-mono text-4xl font-semibold text-heartbeat">
+          {bpm ?? "—"}
+        </span>
+      </div>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+        beats per minute{streaming ? " · live" : ""}
+      </p>
+    </div>
+  );
+}
+
+function DeviceSidebar({
+  location,
+  status,
+}: {
+  location: { latitude: number; longitude: number } | null;
+  status: AlertStatus | null;
+}) {
+  return (
+    <div className="flex w-full flex-col gap-4 border-t border-border pt-6 md:w-64 md:border-l md:border-t-0 md:pl-8 md:pt-0">
+      <LocationIndicator location={location} />
+      <StatusText status={status} />
+    </div>
+  );
+}
+
+function LocationIndicator({
+  location,
+}: {
+  location: { latitude: number; longitude: number } | null;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-location/10 px-4 py-3">
+      <span
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-location text-location-foreground"
+        aria-hidden="true"
+      >
+        <MapPin className="size-4" />
+      </span>
+      <div className="leading-tight">
+        <p className="text-sm font-medium text-foreground">
+          {location ? "Location ready to share" : "Location unavailable"}
+        </p>
+        <p className="font-mono text-xs text-muted-foreground">
+          {location
+            ? `${location.latitude.toFixed(4)}°, ${location.longitude.toFixed(4)}°`
+            : "Waiting for browser permission"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function StatusText({ status }: { status: AlertStatus | null }) {
+  if (!status || status === "ACTIVE") {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+        <span
+          className={cn(
+            "size-2 rounded-full",
+            status === "ACTIVE"
+              ? "bg-muted-foreground motion-safe:animate-pulse"
+              : "bg-border"
+          )}
+          aria-hidden="true"
+        />
+        {status === "ACTIVE" ? statusMessageFor("ACTIVE") : "Standing by"}
+      </div>
+    );
+  }
+
+  if (status === "RESOLVED") {
+    return (
+      <div className="flex items-center gap-2 text-sm font-medium text-resolved" role="status">
+        <CheckCircle2 className="size-4" aria-hidden="true" />
+        {statusMessageFor("RESOLVED")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground" role="status">
+      <span className="size-2 rounded-full bg-border" aria-hidden="true" />
+      {statusMessageFor("CANCELLED")}
     </div>
   );
 }

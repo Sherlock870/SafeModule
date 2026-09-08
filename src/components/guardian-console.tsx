@@ -2,6 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
+import {
+  AlertTriangle,
+  Bot,
+  Briefcase,
+  CheckCircle2,
+  Cpu,
+  HeartPulse,
+  MapPin,
+  ShieldCheck,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/cn";
 
 type Telemetry = {
   id: string;
@@ -9,51 +21,60 @@ type Telemetry = {
   recordedAt: string;
 };
 
+type DeviceType = "BAG_CLIP" | "NECKLACE";
+type AlertStatus = "ACTIVE" | "RESOLVED" | "CANCELLED";
+type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+type AiSource = "llm" | "fallback";
+
 type AlertRecord = {
   id: string;
-  device: { id: string; type: "BAG_CLIP" | "NECKLACE"; label: string };
+  device: { id: string; type: DeviceType; label: string };
   triggerType: "MANUAL_SOS" | "VOICE_DISTRESS";
-  status: "ACTIVE" | "RESOLVED" | "CANCELLED";
+  status: AlertStatus;
   latitude: number | null;
   longitude: number | null;
   locationLabel: string | null;
   createdAt: string;
   aiStatus: "PENDING" | "ANALYZING" | "DONE_LLM" | "DONE_FALLBACK" | "FAILED";
-  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | null;
+  riskLevel: RiskLevel | null;
   riskConfidence: number | null;
   triggeringSignals: string[] | null;
   rationale: string | null;
   recommendedAction: string | null;
-  aiSource: "llm" | "fallback" | null;
+  aiSource: AiSource | null;
   sourceLabel: string | null;
   recentTelemetry: Telemetry[];
 };
 
 const POLL_INTERVAL_MS = 3000;
 
-const RISK_STYLES: Record<string, string> = {
-  CRITICAL: "bg-red-600 text-white",
-  HIGH: "bg-orange-500 text-white",
-  MEDIUM: "bg-yellow-400 text-black",
-  LOW: "bg-green-500 text-white",
+const RISK_STYLES: Record<RiskLevel, string> = {
+  CRITICAL: "bg-emergency text-emergency-foreground",
+  HIGH: "bg-caution text-caution-foreground",
+  MEDIUM: "bg-secondary text-secondary-foreground",
+  LOW: "bg-resolved text-resolved-foreground",
 };
 
-function riskBadge(alert: AlertRecord) {
-  if (alert.aiStatus === "PENDING" || alert.aiStatus === "ANALYZING") {
-    return <span className="rounded px-2 py-1 text-xs font-medium bg-black/10 dark:bg-white/10">Analyzing…</span>;
-  }
-  if (!alert.riskLevel) {
-    return <span className="rounded px-2 py-1 text-xs font-medium bg-black/10 dark:bg-white/10">Unknown</span>;
-  }
-  return (
-    <span className={`rounded px-2 py-1 text-xs font-medium ${RISK_STYLES[alert.riskLevel]}`}>
-      {alert.riskLevel}
-    </span>
-  );
-}
+const deviceLabel: Record<DeviceType, string> = {
+  BAG_CLIP: "Bag / Clip",
+  NECKLACE: "Necklace",
+};
+
+const deviceIcon: Record<DeviceType, typeof Briefcase> = {
+  BAG_CLIP: Briefcase,
+  NECKLACE: HeartPulse,
+};
+
+const sourceIcon: Record<AiSource, typeof Bot> = {
+  llm: Bot,
+  fallback: Cpu,
+};
 
 function relativeTime(iso: string) {
-  const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  const seconds = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  );
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
@@ -93,146 +114,396 @@ export function GuardianConsole() {
     fetchAlerts();
   }
 
+  const active = alerts.filter((a) => a.status === "ACTIVE");
+  const inactive = alerts.filter((a) => a.status !== "ACTIVE");
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Guardian Incident Console</h1>
-        <div className="flex gap-2">
-          <button
-            type="button"
+    <div className="mx-auto w-full max-w-3xl px-4 pb-20 pt-8 md:pt-12">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-safe">
+            Step 2 · Guardian Console
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+            Respond as a guardian
+          </h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <FilterButton
+            active={filter === "ACTIVE"}
             onClick={() => setFilter("ACTIVE")}
-            className={`rounded border px-3 py-1 text-sm ${
-              filter === "ACTIVE"
-                ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                : "border-black/20 dark:border-white/20"
-            }`}
           >
             Active
-          </button>
-          <button
-            type="button"
+          </FilterButton>
+          <FilterButton
+            active={filter === "ALL"}
             onClick={() => setFilter("ALL")}
-            className={`rounded border px-3 py-1 text-sm ${
-              filter === "ALL"
-                ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                : "border-black/20 dark:border-white/20"
-            }`}
           >
             All
-          </button>
+          </FilterButton>
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="rounded border border-black/20 px-3 py-1 text-sm dark:border-white/20"
+            className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent"
           >
             Log out
           </button>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-emergency">{error}</p>}
 
-      {alerts.length === 0 && !error && (
-        <p className="text-sm text-black/60 dark:text-white/60">No incidents.</p>
-      )}
-
-      <div className="space-y-4">
-        {alerts.map((alert) => (
-          <div
-            key={alert.id}
-            className="space-y-3 rounded-lg border border-black/10 p-4 dark:border-white/10"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {riskBadge(alert)}
-                <span className="text-sm font-medium">
-                  {alert.triggerType === "MANUAL_SOS" ? "Manual SOS" : "Voice Distress"}
-                </span>
-              </div>
-              <span className="text-xs text-black/60 dark:text-white/60">
-                {relativeTime(alert.createdAt)}
+      <div className="flex flex-col gap-10">
+        <section className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Active incidents
+            </h2>
+            {active.length > 0 && (
+              <span className="font-mono text-xs text-muted-foreground">
+                {active.length} open
               </span>
-            </div>
-
-            <div className="text-sm text-black/80 dark:text-white/80">
-              <div>
-                Device: {alert.device.type === "BAG_CLIP" ? "Bag / Clip" : "Necklace"} —{" "}
-                {alert.device.label}
-              </div>
-              <div>
-                Location:{" "}
-                {alert.latitude != null && alert.longitude != null ? (
-                  <a
-                    className="underline"
-                    href={`https://www.google.com/maps?q=${alert.latitude},${alert.longitude}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {alert.latitude.toFixed(4)}, {alert.longitude.toFixed(4)}
-                  </a>
-                ) : (
-                  alert.locationLabel ?? "Unknown"
-                )}
-              </div>
-              {alert.recentTelemetry.length > 0 && (
-                <div>
-                  Heart rate: {alert.recentTelemetry.map((t) => t.heartRate).join(", ")} bpm
-                </div>
-              )}
-            </div>
-
-            {alert.rationale && (
-              <div className="space-y-1 rounded bg-black/5 p-3 text-sm dark:bg-white/5">
-                <p>{alert.rationale}</p>
-                {alert.triggeringSignals && alert.triggeringSignals.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {alert.triggeringSignals.map((signal) => (
-                      <span
-                        key={signal}
-                        className="rounded bg-black/10 px-2 py-0.5 text-xs dark:bg-white/10"
-                      >
-                        {signal}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {alert.recommendedAction && (
-                  <p className="font-medium">{alert.recommendedAction}</p>
-                )}
-                {alert.riskConfidence != null && (
-                  <p className="text-xs text-black/60 dark:text-white/60">
-                    Confidence: {Math.round(alert.riskConfidence * 100)}%
-                  </p>
-                )}
-                {alert.sourceLabel && (
-                  <p className="text-xs text-black/60 dark:text-white/60">
-                    Source: {alert.sourceLabel}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {alert.status === "ACTIVE" && (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => updateStatus(alert.id, "RESOLVED")}
-                  className="rounded bg-black px-3 py-1 text-sm font-medium text-white dark:bg-white dark:text-black"
-                >
-                  Resolve
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateStatus(alert.id, "CANCELLED")}
-                  className="rounded border border-black/20 px-3 py-1 text-sm font-medium dark:border-white/20"
-                >
-                  Cancel
-                </button>
-              </div>
             )}
           </div>
-        ))}
+
+          {active.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="flex flex-col gap-4">
+              {active.map((alert) => (
+                <IncidentCard
+                  key={alert.id}
+                  alert={alert}
+                  onResolve={() => updateStatus(alert.id, "RESOLVED")}
+                  onCancel={() => updateStatus(alert.id, "CANCELLED")}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {inactive.length > 0 && (
+          <section className="flex flex-col gap-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Resolved / cancelled
+            </h2>
+            <div className="flex flex-col gap-4">
+              {inactive.map((alert) => (
+                <IncidentCard
+                  key={alert.id}
+                  alert={alert}
+                  onResolve={() => updateStatus(alert.id, "RESOLVED")}
+                  onCancel={() => updateStatus(alert.id, "CANCELLED")}
+                />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
+    </div>
+  );
+}
+
+function FilterButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border text-foreground hover:bg-accent"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-6 py-16 text-center shadow-sm">
+      <span
+        className="flex size-14 items-center justify-center rounded-full bg-safe/10 text-safe"
+        aria-hidden="true"
+      >
+        <ShieldCheck className="size-7" />
+      </span>
+      <p className="text-base font-semibold text-foreground">
+        No active incidents
+      </p>
+      <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+        Every wearer is checked in. Any new alert will appear here the moment
+        it&apos;s raised.
+      </p>
+    </div>
+  );
+}
+
+function IncidentCard({
+  alert,
+  onResolve,
+  onCancel,
+}: {
+  alert: AlertRecord;
+  onResolve: () => void;
+  onCancel: () => void;
+}) {
+  const isActive = alert.status === "ACTIVE";
+  const DeviceIcon = deviceIcon[alert.device.type];
+  const analyzing = alert.aiStatus === "PENDING" || alert.aiStatus === "ANALYZING";
+  const latestHeartRate = alert.recentTelemetry[0]?.heartRate;
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-5 rounded-2xl border bg-card p-5 shadow-sm",
+        isActive
+          ? "border-border border-l-4 border-l-emergency"
+          : alert.status === "RESOLVED"
+            ? "border-resolved"
+            : "border-border"
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground"
+            aria-hidden="true"
+          >
+            <DeviceIcon className="size-4" />
+          </span>
+          <div className="leading-tight">
+            <p className="text-sm font-semibold text-foreground">
+              {deviceLabel[alert.device.type]}
+            </p>
+            <p className="font-mono text-xs text-muted-foreground">
+              {alert.triggerType === "MANUAL_SOS" ? "Manual SOS" : "Voice Distress"} ·{" "}
+              {relativeTime(alert.createdAt)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <RiskBadge riskLevel={alert.riskLevel} analyzing={analyzing} />
+          <StatusBadge status={alert.status} />
+        </div>
+      </div>
+
+      {alert.rationale && (
+        <p className="text-sm leading-relaxed text-pretty text-foreground">
+          {alert.rationale}
+        </p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-4">
+        <LocationChip
+          latitude={alert.latitude}
+          longitude={alert.longitude}
+          label={alert.locationLabel}
+        />
+        {latestHeartRate !== undefined && (
+          <HeartRateChip bpm={latestHeartRate} />
+        )}
+      </div>
+
+      {alert.rationale && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <div className="flex flex-col gap-2">
+            {alert.triggeringSignals && alert.triggeringSignals.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {alert.triggeringSignals.map((signal) => (
+                  <span
+                    key={signal}
+                    className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                  >
+                    {signal}
+                  </span>
+                ))}
+              </div>
+            )}
+            {alert.recommendedAction && (
+              <p className="text-sm font-medium text-foreground">
+                {alert.recommendedAction}
+              </p>
+            )}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {alert.riskConfidence != null && (
+                <span>Confidence: {Math.round(alert.riskConfidence * 100)}%</span>
+              )}
+              {alert.aiSource && (
+                <span className="inline-flex items-center gap-1.5">
+                  {(() => {
+                    const SourceIcon = sourceIcon[alert.aiSource];
+                    return <SourceIcon className="size-3.5" aria-hidden="true" />;
+                  })()}
+                  Source: {alert.sourceLabel}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {isActive && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:bg-accent"
+              >
+                <X className="size-3.5" aria-hidden="true" />
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onResolve}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-resolved px-3 text-sm font-medium text-resolved-foreground hover:opacity-90"
+              >
+                <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                Resolve
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!alert.rationale && isActive && (
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <span className="text-xs text-muted-foreground">
+            Waiting on risk assessment…
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onResolve}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-resolved px-3 text-sm font-medium text-resolved-foreground hover:opacity-90"
+            >
+              <CheckCircle2 className="size-3.5" aria-hidden="true" />
+              Resolve
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RiskBadge({
+  riskLevel,
+  analyzing,
+}: {
+  riskLevel: RiskLevel | null;
+  analyzing: boolean;
+}) {
+  if (analyzing) {
+    return (
+      <span className="inline-flex h-5 items-center rounded-full bg-muted px-2.5 text-xs font-semibold tracking-wide text-muted-foreground">
+        Analyzing…
+      </span>
+    );
+  }
+
+  if (!riskLevel) {
+    return (
+      <span className="inline-flex h-5 items-center rounded-full bg-muted px-2.5 text-xs font-semibold tracking-wide text-muted-foreground">
+        Unknown
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 items-center rounded-full px-2.5 text-xs font-semibold tracking-wide",
+        RISK_STYLES[riskLevel]
+      )}
+    >
+      {riskLevel}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: AlertStatus }) {
+  if (status === "ACTIVE") {
+    return (
+      <span className="inline-flex h-5 items-center gap-1 rounded-full bg-emergency px-2.5 text-xs font-semibold tracking-wide text-emergency-foreground">
+        <AlertTriangle className="size-3" aria-hidden="true" />
+        ACTIVE
+      </span>
+    );
+  }
+
+  if (status === "RESOLVED") {
+    return (
+      <span className="inline-flex h-5 items-center gap-1 rounded-full bg-resolved px-2.5 text-xs font-semibold tracking-wide text-resolved-foreground">
+        <CheckCircle2 className="size-3" aria-hidden="true" />
+        RESOLVED
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex h-5 items-center gap-1 rounded-full bg-muted px-2.5 text-xs font-semibold tracking-wide text-muted-foreground">
+      <X className="size-3" aria-hidden="true" />
+      CANCELLED
+    </span>
+  );
+}
+
+function LocationChip({
+  latitude,
+  longitude,
+  label,
+}: {
+  latitude: number | null;
+  longitude: number | null;
+  label: string | null;
+}) {
+  if (latitude != null && longitude != null) {
+    return (
+      <a
+        href={`https://www.google.com/maps?q=${latitude},${longitude}`}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <MapPin className="size-3.5 text-location" aria-hidden="true" />
+        <span className="font-mono">
+          {latitude.toFixed(4)}°, {longitude.toFixed(4)}°
+        </span>
+      </a>
+    );
+  }
+
+  return (
+    <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      <MapPin className="size-3.5 text-location" aria-hidden="true" />
+      <span>{label ?? "Unknown"}</span>
+    </div>
+  );
+}
+
+function HeartRateChip({ bpm }: { bpm: number }) {
+  return (
+    <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      <HeartPulse className="size-3.5 text-heartbeat" aria-hidden="true" />
+      <span className="font-mono text-heartbeat">{bpm} bpm</span>
     </div>
   );
 }

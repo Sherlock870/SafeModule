@@ -1,26 +1,158 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f8fa;
+  --foreground: #24343d;
+
+  --card: #ffffff;
+  --card-foreground: #24343d;
+
+  --popover: #ffffff;
+  --popover-foreground: #24343d;
+
+  --primary: #4f8fa8;
+  --primary-foreground: #ffffff;
+
+  --secondary: #e7eef2;
+  --secondary-foreground: #24343d;
+
+  --muted: #e7eef2;
+  --muted-foreground: #5f7480;
+
+  --accent: #e7eef2;
+  --accent-foreground: #24343d;
+
+  --destructive: #d92d3a;
+  --destructive-foreground: #ffffff;
+
+  --border: #dbe6ec;
+  --input: #dbe6ec;
+  --ring: #4f8fa8;
+
+  /* Semantic safety tokens */
+  --safe: #4f8fa8;
+  --safe-foreground: #ffffff;
+  --location: #4285a4;
+  --location-foreground: #ffffff;
+  --heartbeat: #e86a76;
+  --heartbeat-foreground: #ffffff;
+  --caution: #e5a82e;
+  --caution-foreground: #24343d;
+  --emergency: #d92d3a;
+  --emergency-foreground: #ffffff;
+  --resolved: #5b9b72;
+  --resolved-foreground: #ffffff;
+
+  --radius: 16px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-safe: var(--safe);
+  --color-safe-foreground: var(--safe-foreground);
+  --color-location: var(--location);
+  --color-location-foreground: var(--location-foreground);
+  --color-heartbeat: var(--heartbeat);
+  --color-heartbeat-foreground: var(--heartbeat-foreground);
+  --color-caution: var(--caution);
+  --color-caution-foreground: var(--caution-foreground);
+  --color-emergency: var(--emergency);
+  --color-emergency-foreground: var(--emergency-foreground);
+  --color-resolved: var(--resolved);
+  --color-resolved-foreground: var(--resolved-foreground);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f1417;
+    --foreground: #e7eef2;
+
+    --card: #182024;
+    --card-foreground: #e7eef2;
+
+    --popover: #182024;
+    --popover-foreground: #e7eef2;
+
+    --primary: #6ba8bf;
+    --primary-foreground: #0f1417;
+
+    --secondary: #1f2a2f;
+    --secondary-foreground: #e7eef2;
+
+    --muted: #1f2a2f;
+    --muted-foreground: #8fa3ac;
+
+    --accent: #1f2a2f;
+    --accent-foreground: #e7eef2;
+
+    --destructive: #ef4a56;
+    --destructive-foreground: #0f1417;
+
+    --border: #2a363c;
+    --input: #2a363c;
+    --ring: #6ba8bf;
+
+    --safe: #6ba8bf;
+    --safe-foreground: #0f1417;
+    --location: #5fa3c4;
+    --location-foreground: #0f1417;
+    --heartbeat: #f08a94;
+    --heartbeat-foreground: #0f1417;
+    --caution: #f0bd52;
+    --caution-foreground: #0f1417;
+    --emergency: #ef4a56;
+    --emergency-foreground: #0f1417;
+    --resolved: #7cbb92;
+    --resolved-foreground: #0f1417;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  @keyframes heartbeat-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.18);
+      opacity: 0.75;
+    }
+  }
+
+  .animate-heartbeat {
+    animation: heartbeat-pulse 1.1s ease-in-out infinite;
+  }
 }

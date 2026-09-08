@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -49,59 +50,86 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg border border-black/10 p-6 dark:border-white/10"
-      >
-        <h1 className="text-xl font-semibold">Sign up</h1>
-
-        <div className="space-y-1">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-black"
-          />
+    <div className="flex flex-1 items-center justify-center bg-background px-4 py-16">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-sm">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span
+            className="flex size-11 items-center justify-center rounded-full bg-safe/10 text-safe"
+            aria-hidden="true"
+          >
+            <ShieldCheck className="size-6" />
+          </span>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-lg font-semibold text-foreground">
+              Sign up
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Guardian access to SafeModule incidents.
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded border border-black/20 px-3 py-2 text-sm dark:border-white/20 dark:bg-black"
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="email"
+              className="text-sm font-medium text-foreground"
+            >
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="guardian@safemodule.org"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
+            />
+          </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="password"
+              className="text-sm font-medium text-foreground"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="••••••••"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
+            />
+          </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
-        >
-          {loading ? "Creating account…" : "Sign up"}
-        </button>
+          {error && <p className="text-sm text-emergency">{error}</p>}
 
-        <p className="text-sm text-black/60 dark:text-white/60">
-          Already have an account?{" "}
-          <Link href="/login" className="underline">
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-2 w-full rounded-md bg-safe px-3 py-2 text-sm font-medium text-safe-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? "Creating account…" : "Create account"}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
+          Already a guardian?{" "}
+          <Link
+            href="/login"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
             Log in
           </Link>
         </p>
-      </form>
+      </div>
     </div>
   );
 }
