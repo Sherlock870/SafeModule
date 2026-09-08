@@ -144,7 +144,7 @@ export function GuardianConsole() {
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent"
+            className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-transform hover:bg-accent active:scale-95"
           >
             Log out
           </button>
@@ -218,7 +218,7 @@ function FilterButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+        "rounded-md border px-3 py-1.5 text-sm font-medium transition-[color,background-color,border-color,transform] active:scale-95",
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border text-foreground hover:bg-accent"
@@ -268,10 +268,10 @@ function IncidentCard({
       className={cn(
         "flex flex-col gap-5 rounded-2xl border bg-card p-5 shadow-sm",
         isActive
-          ? "border-border border-l-4 border-l-emergency"
+          ? "border-border border-l-4 border-l-emergency motion-safe:animate-card-in-glow"
           : alert.status === "RESOLVED"
-            ? "border-resolved"
-            : "border-border"
+            ? "border-resolved motion-safe:animate-card-in"
+            : "border-border motion-safe:animate-card-in"
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -357,7 +357,7 @@ function IncidentCard({
               <button
                 type="button"
                 onClick={onCancel}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground hover:bg-accent"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-transform hover:bg-accent active:scale-95"
               >
                 <X className="size-3.5" aria-hidden="true" />
                 Cancel
@@ -365,7 +365,7 @@ function IncidentCard({
               <button
                 type="button"
                 onClick={onResolve}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-resolved px-3 text-sm font-medium text-resolved-foreground hover:opacity-90"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-resolved px-3 text-sm font-medium text-resolved-foreground transition-transform hover:opacity-90 active:scale-95"
               >
                 <CheckCircle2 className="size-3.5" aria-hidden="true" />
                 Resolve

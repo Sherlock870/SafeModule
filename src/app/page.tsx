@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-background">
-      <SiteHeader />
+      <SiteHeader animated />
 
       <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-8 md:pt-12">
         <section className="mx-auto max-w-2xl text-center">

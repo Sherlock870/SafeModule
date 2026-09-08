@@ -184,7 +184,7 @@ export default function SimulatorPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-background">
-      <SiteHeader />
+      <SiteHeader animated />
 
       <main className="mx-auto w-full max-w-3xl px-4 pb-20 pt-8 md:pt-12">
         <Link
@@ -297,7 +297,7 @@ function ModeTab({
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+        "inline-flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-[color,background-color,border-color,transform] active:scale-95",
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-card text-foreground hover:bg-accent"
@@ -393,7 +393,7 @@ function NecklaceControl({
             type="button"
             disabled={toggleDisabled}
             onClick={onToggleStream}
-            className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent"
+            className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground transition-transform hover:bg-accent active:scale-95"
           >
             {streaming ? "Stop wearing" : "Start wearing"}
           </button>
@@ -403,7 +403,7 @@ function NecklaceControl({
           type="button"
           disabled={!streaming}
           onClick={onSpike}
-          className="w-full rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground disabled:opacity-40 hover:enabled:bg-accent"
+          className="w-full rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground transition-transform disabled:opacity-40 hover:enabled:bg-accent active:enabled:scale-95"
         >
           Spike heart rate
         </button>
@@ -437,7 +437,12 @@ function HeartRateReadout({
           )}
           aria-hidden="true"
         />
-        <span className="font-mono text-4xl font-semibold text-heartbeat">
+        <span
+          className={cn(
+            "font-mono text-4xl font-semibold text-heartbeat",
+            streaming && "motion-safe:animate-heartbeat-soft"
+          )}
+        >
           {bpm ?? "—"}
         </span>
       </div>
@@ -490,10 +495,33 @@ function LocationIndicator({
   );
 }
 
+function AnimatedDots() {
+  return (
+    <span className="inline-flex gap-0.5" aria-hidden="true">
+      <span
+        className="size-1 rounded-full bg-muted-foreground motion-safe:animate-dot-pulse"
+        style={{ animationDelay: "0ms" }}
+      />
+      <span
+        className="size-1 rounded-full bg-muted-foreground motion-safe:animate-dot-pulse"
+        style={{ animationDelay: "200ms" }}
+      />
+      <span
+        className="size-1 rounded-full bg-muted-foreground motion-safe:animate-dot-pulse"
+        style={{ animationDelay: "400ms" }}
+      />
+    </span>
+  );
+}
+
 function StatusText({ status }: { status: AlertStatus | null }) {
   if (!status || status === "ACTIVE") {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+      <div
+        key={status ?? "idle"}
+        className="flex items-center gap-2 text-sm text-muted-foreground motion-safe:animate-fade-in"
+        role="status"
+      >
         <span
           className={cn(
             "size-2 rounded-full",
@@ -503,14 +531,25 @@ function StatusText({ status }: { status: AlertStatus | null }) {
           )}
           aria-hidden="true"
         />
-        {status === "ACTIVE" ? statusMessageFor("ACTIVE") : "Standing by"}
+        {status === "ACTIVE" ? (
+          <span className="inline-flex items-center gap-1.5">
+            Guardian reviewing
+            <AnimatedDots />
+          </span>
+        ) : (
+          "Standing by"
+        )}
       </div>
     );
   }
 
   if (status === "RESOLVED") {
     return (
-      <div className="flex items-center gap-2 text-sm font-medium text-resolved" role="status">
+      <div
+        key={status}
+        className="flex items-center gap-2 text-sm font-medium text-resolved motion-safe:animate-fade-in"
+        role="status"
+      >
         <CheckCircle2 className="size-4" aria-hidden="true" />
         {statusMessageFor("RESOLVED")}
       </div>
@@ -518,7 +557,11 @@ function StatusText({ status }: { status: AlertStatus | null }) {
   }
 
   return (
-    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground" role="status">
+    <div
+      key={status}
+      className="flex items-center gap-2 text-sm font-medium text-muted-foreground motion-safe:animate-fade-in"
+      role="status"
+    >
       <span className="size-2 rounded-full bg-border" aria-hidden="true" />
       {statusMessageFor("CANCELLED")}
     </div>
