@@ -50,8 +50,10 @@ map SDK (location is shown as plain lat/lng with a link to Google Maps).
   ("Guardian reviewing…" → "Help acknowledged.").
 - Telemetry ingestion (`POST /api/telemetry`), fully decoupled from alerts.
 - Alert creation (`POST /api/alerts`), synchronous and AI-independent.
-- Async risk-assessment enrichment (LLM seam, currently stubbed, with a
-  deterministic rule-based fallback that always completes).
+- Async risk-assessment enrichment: a real call to the Gemini API
+  (`gemini-3.5-flash-lite`, 3s timeout) when `GEMINI_API_KEY` is set, with
+  a deterministic rule-based fallback that always completes if the key is
+  missing, the call fails, times out, or returns malformed output.
 - Guardian Incident Console (`/guardian`, authenticated): polls active
   alerts, shows risk level, telemetry, rationale, triggering signals,
   recommended action, and its enrichment source; resolve/cancel actions;

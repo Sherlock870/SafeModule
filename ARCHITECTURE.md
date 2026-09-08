@@ -18,8 +18,9 @@ Next.js Route Handlers ──► Prisma ──► SQLite (dev.db)
         │  after() schedules, non-blocking
         ▼
 Risk Assessment (src/lib/risk-assessment.ts)
-        │  tries LLM seam (stubbed) → falls back to
-        │  deterministic heuristic (always succeeds)
+        │  tries Gemini API (gemini-3.5-flash-lite, 3s timeout)
+        │  → falls back to deterministic heuristic on any
+        │    missing key / failure / timeout / bad output
         ▼
 Alert row updated with riskLevel/rationale/etc.
         ▲
@@ -39,10 +40,11 @@ Guardian Console (protected, /guardian)
 - **API routes** (`src/app/api/`): `telemetry`, `alerts`, `alerts/[id]`,
   `auth/[...nextauth]`, `auth/signup`.
 - **`src/lib/`**: `prisma.ts` (singleton client), `risk-assessment.ts`
-  (orchestrator), `llm-seam.ts` (stubbed LLM call), `risk-fallback.ts`
-  (deterministic heuristic), `alert-telemetry.ts` (attaches recent
-  telemetry + a human-readable `sourceLabel` to alerts for API responses),
-  `ai-source-label.ts`.
+  (orchestrator), `llm-seam.ts` (real Gemini API call, server-only —
+  guarded with the `server-only` package so the key can never reach a
+  client bundle), `risk-fallback.ts` (deterministic heuristic),
+  `alert-telemetry.ts` (attaches recent telemetry + a human-readable
+  `sourceLabel` to alerts for API responses), `ai-source-label.ts`.
 - **`src/auth.ts`**: NextAuth v5 config — Credentials provider, JWT
   session, `signIn`/`signOut`/`auth` exported for use across server and
   client components.
@@ -55,11 +57,19 @@ Guardian Console (protected, /guardian)
 2. The route handler schedules `runRiskAssessment` via Next.js's `after()`,
    which runs *after* the HTTP response has already been sent.
 3. `runRiskAssessment` loads the alert's last 20 telemetry readings, tries
-   the LLM seam (returns `null` today — no key wired up), and falls back to
-   `computeFallbackAssessment`, a pure function of trigger type + recent
-   heart rate that always produces a result.
+   `tryLlmAssessment` (`src/lib/llm-seam.ts`), which — if `GEMINI_API_KEY`
+   is set — sends the trigger type and recent heart rate to Gemini
+   (`gemini-3.5-flash-lite`, requesting strict JSON, 3s timeout) and
+   validates the shape of whatever comes back. Any missing key, HTTP
+   failure, timeout, or malformed/invalid response returns `null`, at
+   which point the orchestrator falls back to `computeFallbackAssessment`,
+   a pure function of trigger type + recent heart rate that always
+   produces a result. The fallback path is never skipped due to error —
+   it's the guaranteed floor.
 4. The alert row is updated with `riskLevel`, `riskConfidence`,
-   `triggeringSignals`, `rationale`, `recommendedAction`, `aiSource`.
+   `triggeringSignals`, `rationale`, `recommendedAction`, and `aiSource`
+   (`"llm"` or `"fallback"`, surfaced to the Guardian Console as
+   `sourceLabel` so a viewer can see which path actually ran).
 5. The Guardian Console and the simulator's own status tracker each poll
    independently (`GET /api/alerts?status=ACTIVE` and
    `GET /api/alerts/[id]`) to reflect state changes within one interval.
@@ -70,12 +80,16 @@ Guardian Console (protected, /guardian)
 - Tailwind CSS 4
 - Prisma 6 ORM on SQLite
 - NextAuth v5 (beta), Credentials provider, bcryptjs for password hashing
+- Gemini API (`gemini-3.5-flash-lite`) for risk-assessment enrichment, called
+  directly via `fetch` (no SDK dependency), gated behind `GEMINI_API_KEY`
 
 ## Infrastructure
 
 Local-only for the hackathon: `npm run dev`, SQLite file on disk
-(`prisma/dev.db`, gitignored — migrations are committed). No containers, no
-external services. Deployment was explicitly out of scope for this pass.
+(`prisma/dev.db`, gitignored — migrations are committed). No containers; the
+one external dependency is the Gemini API call from `llm-seam.ts`, which
+degrades to the local deterministic fallback if it's unreachable. Deployment
+was explicitly out of scope for this pass.
 
 ## Scalability Considerations
 
