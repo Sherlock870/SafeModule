@@ -19,3 +19,81 @@ model Item {
   name      String
   createdAt DateTime @default(now())
 }
+
+enum DeviceType {
+  BAG_CLIP
+  NECKLACE
+}
+
+enum TriggerType {
+  MANUAL_SOS
+  VOICE_DISTRESS
+}
+
+enum AlertStatus {
+  ACTIVE
+  RESOLVED
+  CANCELLED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AiStatus {
+  PENDING
+  ANALYZING
+  DONE_LLM
+  DONE_FALLBACK
+  FAILED
+}
+
+model Device {
+  id        String      @id @default(cuid())
+  type      DeviceType
+  label     String
+  createdAt DateTime    @default(now())
+  telemetry Telemetry[]
+  alerts    Alert[]
+}
+
+model Telemetry {
+  id         String   @id @default(cuid())
+  deviceId   String
+  device     Device   @relation(fields: [deviceId], references: [id])
+  heartRate  Int
+  recordedAt DateTime @default(now())
+
+  @@index([deviceId, recordedAt])
+}
+
+model Alert {
+  id            String      @id @default(cuid())
+  deviceId      String
+  device        Device      @relation(fields: [deviceId], references: [id])
+  triggerType   TriggerType
+  status        AlertStatus @default(ACTIVE)
+
+  latitude      Float?
+  longitude     Float?
+  locationLabel String?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  resolvedAt    DateTime?
+
+  aiStatus          AiStatus   @default(PENDING)
+  riskLevel         RiskLevel?
+  riskConfidence    Float?
+  triggeringSignals Json?
+  rationale         String?
+  recommendedAction String?
+  aiSource          String?
+  aiAnalyzedAt      DateTime?
+
+  @@index([status, createdAt])
+  @@index([deviceId])
+}
