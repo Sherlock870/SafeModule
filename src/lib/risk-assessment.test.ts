@@ -154,7 +154,10 @@ describe("runRiskAssessment", () => {
 
     await runRiskAssessment("missing-alert");
 
-    expect(prisma.alert.update).toHaveBeenCalledOnce();
+    expect(prisma.alert.update).toHaveBeenLastCalledWith({
+      where: { id: "missing-alert" },
+      data: { aiStatus: "FAILED" },
+    });
     expect(tryLlmAssessment).not.toHaveBeenCalled();
   });
 });
