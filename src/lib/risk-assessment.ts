@@ -10,7 +10,13 @@ export async function runRiskAssessment(alertId: string): Promise<void> {
     });
 
     const alert = await prisma.alert.findUnique({ where: { id: alertId } });
-    if (!alert) return;
+    if (!alert) {
+      await prisma.alert.update({
+        where: { id: alertId },
+        data: { aiStatus: "FAILED" },
+      });
+      return;
+    }
 
     const telemetry = await prisma.telemetry.findMany({
       where: { deviceId: alert.deviceId },
