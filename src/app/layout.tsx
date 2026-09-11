@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IIC 3.0",
-  description: "Next.js + Prisma + NextAuth scaffold",
+  title: "SafeModule | Real-time safety alerts",
+  description: "A real-time safety alert simulator and guardian console.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

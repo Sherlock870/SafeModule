@@ -74,7 +74,8 @@ export default function SimulatorPage() {
       acc[type] = id;
       return acc;
     }, {} as Record<DeviceType, string>);
-    setDeviceIds(ids);
+    const initialisation = setTimeout(() => setDeviceIds(ids), 0);
+    return () => clearTimeout(initialisation);
   }, []);
 
   useEffect(() => {
@@ -227,7 +228,7 @@ export default function SimulatorPage() {
       <EdgeLight color={trackedAlertStatus === "ACTIVE" ? "var(--safe)" : null} />
       <SiteHeader animated />
 
-      <main className="mx-auto w-full max-w-3xl px-4 pb-20 pt-8 md:pt-12">
+      <main className="mx-auto w-full max-w-4xl px-4 pb-24 pt-8 md:pt-12">
         <Link
           href="/"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-opacity hover:opacity-80"
@@ -236,23 +237,29 @@ export default function SimulatorPage() {
           Back to overview
         </Link>
 
-        <div className="mt-6">
-          <p className="text-xs font-medium uppercase tracking-wide text-emergency">
+        <div className="mt-8 grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
+          <div>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-emergency">
             Step 1 · Device Simulator
           </p>
-          <h1 className="mt-2 text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+          <h1 className="mt-3 text-balance text-4xl font-semibold leading-none tracking-[-0.04em] text-foreground md:text-5xl">
             Act as the wearable device
           </h1>
-          <p className="mt-3 max-w-xl text-pretty leading-relaxed text-muted-foreground">
+          <p className="mt-4 max-w-xl text-pretty leading-relaxed text-muted-foreground">
             Choose a device, then raise an alert. Location and vitals stream
             to the guardian in real time.
           </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground">
+            <span className="size-2 rounded-full bg-safe motion-safe:animate-pulse" />
+            Device link ready
+          </div>
         </div>
 
         <div className="mt-8 flex flex-col gap-6">
           <ConsentLine />
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 rounded-xl border border-border bg-card p-1">
             <ModeTab
               active={mode === "BAG_CLIP"}
               disabled={!!pendingTrigger}
@@ -317,7 +324,7 @@ export default function SimulatorPage() {
 
 function ConsentLine() {
   return (
-    <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card px-4 py-3">
+    <div className="flex items-start gap-2.5 rounded-xl border border-[#e8cfc0] bg-[#fff8f1] px-4 py-3">
       <Info
         className="mt-0.5 size-4 shrink-0 text-muted-foreground"
         aria-hidden="true"
@@ -363,7 +370,7 @@ function ModeTab({
 
 function DeviceCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-8 rounded-2xl border border-border bg-card p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-8 rounded-[1.5rem] border border-border bg-card p-6 shadow-[6px_6px_0_#ddd9cf] md:flex-row md:items-center md:justify-between md:p-8">
       {children}
     </div>
   );
@@ -390,7 +397,7 @@ function SosControl({
         disabled={disabled || pending}
         aria-label="Raise SOS alert"
         className={cn(
-          "flex size-40 flex-col items-center justify-center gap-2 rounded-full text-emergency-foreground transition-transform",
+          "flex size-44 flex-col items-center justify-center gap-2 rounded-full border-[10px] border-[#f4d9ca] text-emergency-foreground shadow-[0_0_0_8px_#fff3eb,0_12px_22px_rgba(222,91,79,0.25)] transition-transform",
           pending
             ? "bg-emergency motion-safe:animate-pulse"
             : disabled

@@ -101,9 +101,14 @@ export function GuardianConsole() {
   }, [filter]);
 
   useEffect(() => {
-    fetchAlerts();
+    const initialFetch = setTimeout(() => {
+      void fetchAlerts();
+    }, 0);
     const interval = setInterval(fetchAlerts, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialFetch);
+      clearInterval(interval);
+    };
   }, [fetchAlerts]);
 
   async function updateStatus(id: string, status: "RESOLVED" | "CANCELLED") {
@@ -125,16 +130,19 @@ export function GuardianConsole() {
       : "var(--caution)";
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-20 pt-8 md:pt-12">
+    <div className="mx-auto w-full max-w-4xl px-4 pb-24 pt-8 md:pt-12">
       <EdgeLight color={edgeLightColor} />
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-safe">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-safe">
             Step 2 · Guardian Console
           </p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="mt-3 text-4xl font-semibold leading-none tracking-[-0.04em] text-foreground md:text-5xl">
             Respond as a guardian
           </h1>
+          <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">
+            Every incident arrives with context, confidence, and a clear next action.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <FilterButton
@@ -152,7 +160,7 @@ export function GuardianConsole() {
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-transform hover:bg-accent active:scale-95"
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-semibold text-foreground transition-transform hover:bg-accent active:scale-95"
           >
             Log out
           </button>
@@ -164,7 +172,7 @@ export function GuardianConsole() {
       <div className="flex flex-col gap-10">
         <section className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Active incidents
             </h2>
             {active.length > 0 && (
@@ -192,7 +200,7 @@ export function GuardianConsole() {
 
         {inactive.length > 0 && (
           <section className="flex flex-col gap-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Resolved / cancelled
             </h2>
             <div className="flex flex-col gap-4">
@@ -226,7 +234,7 @@ function FilterButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-md border px-3 py-1.5 text-sm font-medium transition-[color,background-color,border-color,transform] active:scale-95",
+        "rounded-lg border px-3 py-1.5 text-sm font-semibold transition-[color,background-color,border-color,transform] active:scale-95",
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border text-foreground hover:bg-accent"
@@ -239,7 +247,7 @@ function FilterButton({
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-6 py-16 text-center shadow-sm">
+    <div className="flex flex-col items-center gap-3 rounded-[1.5rem] border border-border bg-card px-6 py-20 text-center shadow-[6px_6px_0_#ddd9cf]">
       <span
         className="flex size-14 items-center justify-center rounded-full bg-safe/10 text-safe"
         aria-hidden="true"
@@ -274,7 +282,7 @@ function IncidentCard({
   return (
     <div
       className={cn(
-        "flex flex-col gap-5 rounded-2xl border bg-card p-5 shadow-sm motion-safe:animate-card-in",
+        "flex flex-col gap-5 rounded-[1.25rem] border bg-card p-5 shadow-[4px_4px_0_#ddd9cf] motion-safe:animate-card-in md:p-6",
         isActive
           ? "border-border border-l-4 border-l-emergency"
           : alert.status === "RESOLVED"
@@ -421,7 +429,7 @@ function RiskBadge({
 }) {
   if (analyzing) {
     return (
-      <span className="inline-flex h-5 items-center rounded-full bg-muted px-2.5 text-xs font-semibold tracking-wide text-muted-foreground">
+      <span className="inline-flex h-6 items-center rounded-full bg-muted px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
         Analyzing…
       </span>
     );
@@ -450,7 +458,7 @@ function RiskBadge({
 function StatusBadge({ status }: { status: AlertStatus }) {
   if (status === "ACTIVE") {
     return (
-      <span className="inline-flex h-5 items-center gap-1 rounded-full bg-emergency px-2.5 text-xs font-semibold tracking-wide text-emergency-foreground">
+      <span className="inline-flex h-6 items-center gap-1 rounded-full bg-emergency px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-emergency-foreground">
         <AlertTriangle className="size-3" aria-hidden="true" />
         ACTIVE
       </span>
@@ -459,7 +467,7 @@ function StatusBadge({ status }: { status: AlertStatus }) {
 
   if (status === "RESOLVED") {
     return (
-      <span className="inline-flex h-5 items-center gap-1 rounded-full bg-resolved px-2.5 text-xs font-semibold tracking-wide text-resolved-foreground">
+      <span className="inline-flex h-6 items-center gap-1 rounded-full bg-resolved px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-resolved-foreground">
         <CheckCircle2 className="size-3" aria-hidden="true" />
         RESOLVED
       </span>
@@ -467,7 +475,7 @@ function StatusBadge({ status }: { status: AlertStatus }) {
   }
 
   return (
-    <span className="inline-flex h-5 items-center gap-1 rounded-full bg-muted px-2.5 text-xs font-semibold tracking-wide text-muted-foreground">
+    <span className="inline-flex h-6 items-center gap-1 rounded-full bg-muted px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
       <X className="size-3" aria-hidden="true" />
       CANCELLED
     </span>
